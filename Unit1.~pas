@@ -1,0 +1,711 @@
+{$A-}
+
+unit Unit1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls;
+
+type
+  TForm1 = class(TForm)
+    Button1: TButton;
+    Button2: TButton;
+    Button3: TButton;
+    Button4: TButton;
+    Button5: TButton;
+    Button6: TButton;
+    Edit1: TEdit;
+    Button7: TButton;
+    Button8: TButton;
+    Button9: TButton;
+    Button10: TButton;
+    OpenDialog1: TOpenDialog;
+    SaveDialog1: TSaveDialog;
+    Button11: TButton;
+    Button12: TButton;
+    Edit2: TEdit;
+    Edit3: TEdit;
+    Edit4: TEdit;
+    procedure Button1Click(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
+    procedure Button5Click(Sender: TObject);
+    procedure Button6Click(Sender: TObject);
+    procedure Button4Click(Sender: TObject);
+    procedure Button7Click(Sender: TObject);
+    procedure Button8Click(Sender: TObject);
+    procedure Button9Click(Sender: TObject);
+    procedure Button10Click(Sender: TObject);
+    procedure Button11Click(Sender: TObject);
+    procedure FormMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+  field = record
+  clr:TColor; // "Цвет"
+  plm:word;//- принадлежность к племени
+  agr:byte; // Агрессия
+  str:byte; // Страх
+  hod:boolean; // Можно ли ходить?
+  plhod:boolean// Можно ли присоеденять других к своему племени ?
+  end;
+  Tcivil = object
+  protected
+  chislenost:word; //Число дярёвён.
+  sushestvovan:boolean;
+  public
+  voisko:word;   //Число рот
+  cvet:Tcolor;
+  Preemnik : Integer;
+  procedure Create(var buffl:field);
+  procedure SetChislenost(ch : Word);
+  function  GetChislenost : Word;
+  procedure IncChislenost;
+  procedure DecChislenost(N:Integer);
+  procedure Destroy(N:Integer);
+ // procedure Check(N:Integer);
+  end;
+var
+  Form1: TForm1;
+  strt:boolean; // Был ли старт?
+  null:field;
+  area:array[1..512,1..512] of field;
+  plema:array[0..59999] of Tcivil;
+  buf:array[1..60000] of word; //Наверное для замены bufch
+  pl:array[1..8] of byte;
+  chislo:word;
+  bufch:word;
+  knt:integer;
+  naci:byte;
+  civ1:word;
+  clik:boolean;
+
+function autochugennost(checkF : field) : integer;
+//procedure Revisia;
+
+implementation
+
+{$R *.dfm}
+procedure  Tcivil.Create;
+ begin
+  if (sushestvovan) then exit;
+  sushestvovan:=true;
+  chislenost:=1;
+  voisko:=0;
+  cvet:=buffl.clr;
+ end;
+procedure Tcivil.Destroy;
+ begin
+  if (not sushestvovan ) then exit;
+  //if plema[plmn].sushestvovan=false then
+  //knt:=knt+1;
+  cvet:=$ffffff;
+  sushestvovan:=false;
+  chislenost:=bufch;
+  bufch:={plmn}N;
+  {buf[bufch]:=plmn;
+  inc(bufch);  }
+ end;
+procedure  TCivil.IncChislenost;
+begin
+  if sushestvovan then Inc(chislenost);
+end;
+
+procedure  TCivil.DecChislenost;
+begin
+  if sushestvovan then
+    begin
+      Dec(chislenost);
+      if chislenost<=0 then Destroy(N);
+    end;
+end;
+
+procedure  TCivil.SetChislenost;
+begin
+  if sushestvovan then Chislenost:=Ch;
+end;
+
+function TCivil.GetChislenost;
+begin
+  Result := Chislenost;
+end;
+
+{procedure TCivil.Check(N: Integer);
+begin
+  if chislenost<=0 then Destroy(N);
+end;}
+
+
+procedure mutant(var buffl,mutfl:field); //Распространение влияние племени из точки buffl в mutfl 
+var i,mn:integer;
+ begin
+  if buffl.plm>0 then  {inc(plema[buffl.plm].chislenost)}plema[buffl.plm].IncChislenost;
+  mutfl:=buffl;
+  mn:=1;
+  for i:=0 to 2 do
+   begin
+    case random(3) of
+    0: mutfl.clr:=mutfl.clr-mn;
+    2: mutfl.clr:=mutfl.clr+mn;
+    end;
+   mn:=mn*$100;
+   end;
+   if mutfl.str>=10 then mutfl.str:=mutfl.str-10;
+  mutfl.hod:=false;
+ end;
+procedure postavka(x,y,ch:integer;var buffl:field);
+var
+rn,x1,y1:integer; mutpr:field;
+ begin
+  rn:=random(ch*100);
+  rn:=(rn div 100)+1;
+  x1:=x-1+(pl[rn] mod 10);
+  y1:=y-1+(pl[rn] div 10);
+  mutant(buffl,mutpr);
+  area[x1,y1]:=mutpr;
+ end;
+procedure agressia(x,y:integer; var buffl:field); //Агрессия - попытка завоевания одной из 8 соседних точек(наиболее чуждой)
+var
+chuzennost,chuob,nx,ny,i,j,e,g,mn:integer;
+mutpr:field;
+ begin
+  chuob:=0;
+  case random(3) of
+    0: nx:=x-1;
+    1: nx:=x;
+    2: nx:=x+1;
+  end;
+  case random(3) of
+    0: ny:=y-1;
+    1: ny:=y;
+    2: ny:=y+1;
+  end;
+ // mutpr:=area[nx,ny];    -Какого хрена? Так и сами себя можем атаковать. Дожили!
+  for i:=x-1 to x+1 do
+      for j:=y-1 to y+1 do
+       if (i<>x) or (j<>y) then
+       begin
+        e:=area[i,j].clr;
+        g:=buffl.clr;
+        chuzennost:=(abs(e-g) mod $100)+abs(((e-g) mod $10000) div $100)+abs((e-g) div $10000);
+        if (area[i,j].plm<>buffl.plm) or (buffl.plm=0) then
+        if chuzennost>chuob then
+         begin
+          chuob:=chuzennost;
+          nx:=i;
+          ny:=j;
+         end;
+       end;
+  mutpr:=area[nx,ny]; //Эту и только эту область мы пытаемся завоевать.
+  if (chuob=0) and (buffl.plm>0) then //Если некого атаковать
+   if (plema[buffl.plm].chislenost div 3) > (plema[buffl.plm].voisko) then  //Если число дярёвен/3> число рот.
+    begin
+     inc(plema[buffl.plm].voisko); // Дярёвня уходит в войско.
+     buffl.clr:=$ffffff;
+     buffl.plm:=0;
+     plema[buffl.plm].Decchislenost(buffl.plm);{dec(plema[buffl.plm].chislenost);} //Если уход в войска - численость дярёвен понижается
+
+    end
+   else // Иначе агрессии не происходит
+  else
+   begin
+    if (mutpr.plm=0) or (plema[mutpr.plm].voisko=0) then //Независимая дярёвня, или из племени голодрани
+     begin
+      if mutpr.plm>0 then //Если племя врага без войск.
+       begin
+        plema[mutpr.plm].Decchislenost(mutpr.plm);{dec(plema[mutpr.plm].chislenost);}
+        //plema[mutpr.plm].Check(mutpr.plm);
+        //if plema[mutpr.plm].chislenost<=0 then plema[mutpr.plm].DestroyCivil(mutpr.plm);
+       end;
+      mutant(buffl,mutpr);
+     end
+    else
+     begin
+      if (plema[mutpr.plm].voisko>=random(plema[mutpr.plm].chislenost+1)/3){(chuob>30)} or (chuob>autochugennost(mutpr))then //Введён режим глобальной безопасности - войско защищается всё племя.
+       if (plema[buffl.plm].voisko=0) or (buffl.plm=0) then
+        begin
+         if buffl.plm>0 then
+          begin
+           plema[buffl.plm].Decchislenost(buffl.plm);{dec(plema[buffl.plm].chislenost);}
+           //plema[buffl.plm].Check(buffl.plm);//if plema[buffl.plm].chislenost=0 then DestroyCivil(buffl.plm);
+          end;
+          buffl.clr:=$ffffff;
+          buffl.plm:=0;
+        end
+       else
+        if Random(100)>50 then plema[buffl.plm].voisko:=plema[buffl.plm].voisko-1
+        else plema[mutpr.plm].voisko:=plema[mutpr.plm].voisko-1
+      else
+       begin
+        plema[mutpr.plm].Decchislenost(mutpr.plm);//dec(plema[mutpr.plm].chislenost);
+        //plema[mutpr.plm].Check(mutpr.plm);//if plema[mutpr.plm].chislenost=0 then DestroyCivil(mutpr.plm);
+        mutpr.clr:=$ffffff;
+        mutpr.plm :=0;
+        mutant(buffl,mutpr);
+       end;
+    end;
+   end;
+  area[nx,ny]:=mutpr;
+ end;
+procedure prisoed(x,y:integer;ch:word);
+ begin
+  area[x,y].plm:=ch;
+  area[x,y].str:=area[x,y].str-50;
+  plema[ch].IncChislenost;//chislenost);
+ end;
+procedure rasstav(hor:integer;ver:integer;colr:Tcolor);
+var
+i,j:integer;
+begin
+ for i:=hor-10 to hor+10 do
+  for j:=ver-10 to ver+10 do
+   if random(100)>90 then area[i,j].clr:=colr;
+end;
+function compare(ch,c,d:integer):boolean;
+var e,g:TColor;
+begin
+ g:=plema[ch].cvet;
+ e:=area[c,d].clr;
+ if (abs((e mod $100)-(g mod $100))>15)
+ or (abs( ((e mod $10000) div $100) - ((g mod $10000) div $100) )>15)
+ or ((abs(e-g) div $10000)>15) then
+  compare:=false
+ else compare:=true;
+end;
+
+function autochugennost(checkF : field) : integer;
+var e,g:TColor; P:Integer;
+begin
+ P:=checkF.plm;
+ if p=0 then Result:=0
+ else
+   begin
+     e:=checkF.clr;
+     g:=plema[p].cvet;
+     Result := (abs(e-g) mod $100)+abs(((e-g) mod $10000) div $100)+abs((e-g) div $10000);
+   end;
+end;
+
+procedure Revisia;
+var i,j : Integer;
+//A:Word;
+begin
+for i:=1 to chislo do
+ begin
+   plema[i].SetChislenost(0);
+   plema[i].Preemnik := 0;
+ end;
+for i:=1 to 512 do
+  begin
+ // for j:=1 to chislo do if  plema[j].GetChislenost=0 then plema[i].Preemnik := -1;
+  for j:=1 to 512 do
+    begin
+      if area[i,j].plm >0 then
+        begin
+          if plema[area[i,j].plm].Preemnik>0 then
+            begin
+              area[i,j].plm := plema[area[i,j].plm].Preemnik;
+              plema[area[i,j].plm].IncChislenost;
+            end
+          else
+            if plema[area[i,j].plm].Preemnik<-2 then
+              begin
+                inc(chislo);
+                //A:=area[i,j].plm;
+
+                plema[area[i,j].plm].Preemnik := chislo;
+                plema[chislo].Create(area[i,j]);
+                plema[chislo].cvet:=area[i,j].clr;
+                plema[chislo].voisko := plema[area[i,j].plm].voisko;
+                area[i,j].plm := chislo;
+              end
+            else
+              begin
+                plema[area[i,j].plm].Preemnik :=-1;
+                plema[area[i,j].plm].IncChislenost;
+              end;
+        end;
+    end;
+  for j:=1 to chislo do if  plema[j].Preemnik <= -1 then dec(plema[j].Preemnik);
+  end;
+for i:=1 to chislo do
+ begin
+   plema[i].SetChislenost(0);
+   plema[i].Preemnik := 0;
+ end;
+for j:=1 to 512 do
+  begin
+ // for j:=1 to chislo do if  plema[j].GetChislenost=0 then plema[i].Preemnik := -1;
+  for i:=1 to 512 do
+    begin
+      if area[i,j].plm >0 then
+        begin
+          if plema[area[i,j].plm].Preemnik>0 then
+            begin
+              area[i,j].plm := plema[area[i,j].plm].Preemnik;
+              plema[area[i,j].plm].IncChislenost;
+            end
+          else
+            if plema[area[i,j].plm].Preemnik<-2 then
+              begin
+                inc(chislo);
+                //A:=area[i,j].plm;
+                plema[area[i,j].plm].Preemnik := chislo;
+                plema[chislo].Create(area[i,j]);
+                plema[chislo].cvet:=area[i,j].clr;
+                plema[chislo].voisko := plema[area[i,j].plm].voisko;
+                area[i,j].plm := chislo;
+              end
+            else
+              begin
+                plema[area[i,j].plm].Preemnik :=-1;
+                plema[area[i,j].plm].IncChislenost;
+              end;
+        end;
+    end;
+  for i:=1 to chislo do if  plema[i].Preemnik < 0 then dec(plema[i].Preemnik);
+  end;
+
+
+for i:=1 to chislo do if plema[i].GetChislenost<=0 then plema[i].Destroy(i);
+end;
+
+procedure Pereprisaga(S,D :Integer);
+var i,j : Integer;
+begin
+  for i:=1 to 512 do
+    for j:=1 to 512 do
+      if (area[i,j].plm = D) then
+        area[i,j].plm := S;
+end;
+procedure Defrag;
+var A:Integer;
+begin
+  //i1:=bufch;
+  while bufch<>0 do
+    if plema[bufch].sushestvovan then
+      begin
+        bufch:=0;
+      end
+    else
+      begin
+        A:=plema[bufch].Getchislenost;//chislenost;
+        plema[bufch] := plema[chislo];
+        Pereprisaga(bufch,chislo);
+        dec(chislo);
+        bufch := A;
+      end;
+  //plema[i1].Create(bufvr);
+end;
+
+procedure NewPlema(var field_prm : Field);
+Var A : Integer;
+begin
+if bufch=0 then
+  begin
+    inc(chislo);
+    {if chislo=59999 then
+      begin
+        for i1:=1 to 59998 do
+          //if plema[i1].chislenost=1 then Destroycivil(i1);
+          //plema[mutpr.plm].Check(mutpr.plm);
+          chislo:=chislo-1;
+      end; }
+    field_prm.plm:=chislo;
+    plema[chislo].Create(field_prm);
+  end
+else
+  begin
+    A:=bufch;
+    if plema[bufch].sushestvovan then bufch:=0
+                                 else bufch:=plema[bufch].Getchislenost;//chislenost;
+    plema[A].Create(field_prm);
+    //dec(bufch);
+  end;
+field_prm.str:=150;
+end;
+
+procedure TForm1.Button1Click(Sender: TObject);
+var
+i,j,k:integer;
+col:Tcolor;
+begin
+ strt:=true;
+ null.clr:=$ffffff;
+ null.plm:=0;
+ null.agr:=100;
+ null.str:=80;
+ bufch:=0;
+ chislo :=0;
+  for i:=1 to 512 do
+   for j:=1 to 512 do
+    area[i,j]:=null;
+  for i:=1 to 20 do
+   begin
+    j:=random(500)+11;
+    k:=random(500)+11;
+    col:=random($ffffff);
+    rasstav(j,k,col);
+   end;
+end;
+
+procedure TForm1.FormCreate(Sender: TObject);
+begin
+ randomize;
+ strt:=false;
+ plema[0].chislenost:=0;
+ plema[0].voisko:=0;
+ clik:=false;
+ bufch := 0;
+end;
+
+procedure TForm1.Button3Click(Sender: TObject);
+var i,j:integer;
+begin
+ naci:=1;
+ for i:=1 to 512 do
+  for j:=1 to 512 do
+   form1.Canvas.Pixels[i,j]:=area[i,j].clr;
+end;
+
+procedure TForm1.Button2Click(Sender: TObject);
+var i,j,i1,j1,ch,hod:integer;
+bufvr:field;
+begin
+knt:=1;
+for hod:=1 to 50 do
+ for i:=2 to 511 do
+  for j:=2 to 511 do
+   begin
+    //Размножение
+    bufvr:=area[i,j];
+    if (bufvr.clr>=$ffffff) or (bufvr.clr<=0) then continue;
+    if (bufvr.hod=false) then  bufvr.hod:=true
+     else
+     begin
+     ch:=0;
+     for i1:=i-1 to i+1 do
+      for j1:=j-1 to j+1 do
+       if (i1<>i) or (j1<>j) then
+        if area[i1,j1].clr<$ffffff then
+         if compare(bufvr.plm,i1,j1) then
+          if (area[i1,j1].str>150) {and (area[i1,j1].plm=0)} and (bufvr.plm>0) then
+           if (bufvr.plhod=true) and (plema[bufvr.plm].sushestvovan)then prisoed(i1,j1,bufvr.plm)
+           else
+          else
+           begin
+           end
+         else bufvr.str:=bufvr.str+1
+        else
+         begin
+          ch:=ch+1;
+          pl[ch]:=(i1-i+1)+(10*(j1-j+1));
+         end;
+     if ch<>0 then
+      begin
+      if bufvr.agr>=10 then bufvr.agr:=bufvr.agr-10;
+      postavka(i,j,ch,bufvr);
+      end
+     else
+      if bufvr.str<bufvr.agr then
+       begin
+        if bufvr.agr>=10 then bufvr.agr:=bufvr.agr-10;
+        agressia(i,j,bufvr);
+       end
+       else bufvr.agr:=bufvr.agr+1;
+     if bufvr.plhod=false then bufvr.plhod:=true;
+     if bufvr.str>245 then
+     if bufvr.plm=0 then
+      begin
+        NewPlema(bufvr);
+      end
+     else
+       if (plema[bufvr.plm].chislenost div 3) > (plema[bufvr.plm].voisko) then
+        begin
+         plema[bufvr.plm].voisko:=plema[bufvr.plm].voisko+1;
+         plema[bufvr.plm].Decchislenost(bufvr.plm);//chislenost:=plema[bufvr.plm].chislenost-1;
+         bufvr.clr:=$ffffff;
+        end;
+      if (hod mod 10)=0 then
+       begin
+        //ch:=0;
+       if (not compare(bufvr.plm,i,j)) then bufvr.plm:=0;
+        {for i1:=i-1 to i+1 do
+         for j1:=j-1 to j+1 do
+          if bufvr.plm=area[i1,j1].plm then ch:=ch+1;
+        if ch=0 then   //Плохо т.к вызывает уничтожение еновых племён, но не расккалывает "острова"
+         begin
+          plema[bufvr.plm].chislenost:=plema[bufvr.plm].chislenost-1;
+          if plema[bufvr.plm].chislenost=0 then destroycivil(bufvr.plm);
+          bufvr.plm:=0;
+         end;  }
+       end;
+     end; // Конец работы над точкой
+   area[i,j]:=bufvr;
+   end;
+Revisia;
+Defrag;   
+Form1.Edit1.Text:=Inttostr(chislo);
+ case naci of
+ 1: Form1.Button3.Click;
+ 2: Form1.Button4.Click;
+ 3: Form1.Button5.Click;
+ 4: Form1.Button6.Click;
+ 5: Form1.Button11.Click;
+ end;
+end;
+
+procedure TForm1.Button5Click(Sender: TObject);
+var i,j:integer;
+begin
+ naci:=3;
+ for i:=1 to 512 do
+  for j:=1 to 512 do
+{  if area[i,j].str>150 then }form1.Canvas.Pixels[i,j]:=$ffffff-area[i,j].str-area[i,j].str*$100
+ // else form1.Canvas.Pixels[i,j]:=$ffffff ;
+end;
+
+procedure TForm1.Button6Click(Sender: TObject);
+var i,j:integer;
+begin
+ naci:=4;
+ for i:=1 to 512 do
+  for j:=1 to 512 do
+   form1.Canvas.Pixels[i,j]:=$ffffff-area[i,j].agr*$100-area[i,j].agr*$10000;
+end;
+
+procedure TForm1.Button4Click(Sender: TObject);
+var i,j,k:integer;
+begin
+ naci:=2;
+ for i:=1 to 512 do
+  for j:=1 to 512 do
+  begin
+   k:=plema[area[i,j].plm].cvet;
+   RandSeed := k;
+  { if (k>0) and (k<10) then form1.Canvas.Pixels[i,j]:=$ffffff
+    else form1.Canvas.Pixels[i,j]:=$0;   }
+   k:=Random(65536*256);//(k mod 64)*4+((k mod 64*64) div 64)*1024+(k div 64*64)*$10000*4;
+   form1.Canvas.Pixels[i,j]:=k;
+  end;
+end;
+
+procedure TForm1.Button7Click(Sender: TObject);
+var i:integer;
+begin
+ for i:=1 to 10 do
+  Button2Click(Sender);
+end;
+
+procedure TForm1.Button8Click(Sender: TObject);
+begin
+Form1.Close;
+end;
+
+procedure TForm1.Button9Click(Sender: TObject);
+var fil:file; filname:string; i,j:integer; buf1:array[1..500] of word;
+buf2:array[0..499] of Tcivil; buf3:array[1..512] of field;
+begin
+ if form1.OpenDialog1.Execute then
+  begin
+   filname:=form1.OpenDialog1.FileName;
+   assignfile(fil,filname);
+   reset(fil,1);
+   blockread(fil,chislo,2);
+   blockread(fil,bufch,2);
+   for i:=0 to 119 do
+    begin
+     blockread(fil,buf1,1000);
+     for j:=1 to 500 do
+      buf[j+i*500]:=buf1[j];
+    end;
+   for i:=0 to 119 do
+    begin
+     blockread(fil,buf2,4000);
+     for j:=0 to 499 do
+      plema[j+i*500]:=buf2[j];
+    end;
+   for i:=1 to 512 do
+    begin
+     blockread(fil,buf3,6144);
+     for j:=1 to 512 do
+      area[i,j]:=buf3[j];
+    end;
+    CloseFile(fil);
+  end;
+end;
+
+procedure TForm1.Button10Click(Sender: TObject);
+var fil:file; filname:string; i,j:integer; buf1:array[1..500] of word;
+buf2:array[0..499] of Tcivil; buf3:array[1..512] of field;
+begin
+ if form1.SaveDialog1.Execute then
+  begin
+   filname:=form1.SaveDialog1.FileName;
+   assignfile(fil,filname);
+   rewrite(fil,1);
+   blockwrite(fil,chislo,2);
+   blockwrite(fil,bufch,2);
+   for i:=0 to 119 do
+    begin
+     for j:=1 to 500 do
+      buf1[j]:=buf[j+i*500];
+     blockwrite(fil,buf1,1000);
+    end;
+   for i:=0 to 119 do
+    begin
+     for j:=0 to 499 do
+      buf2[j]:=plema[j+i*500];
+     blockwrite(fil,buf2,4000);
+    end;
+   for i:=1 to 512 do
+    begin
+     for j:=1 to 512 do
+      buf3[j]:=area[i,j];
+     blockwrite(fil,buf3,6144);
+    end;
+    CloseFile(fil);
+  end;
+end;
+
+procedure TForm1.Button11Click(Sender: TObject);
+var i,j,k:integer; cr:Tcolor;
+begin
+ naci:=5;
+ for i:=1 to 512 do
+  for j:=1 to 512 do
+  begin
+   k:=area[i,j].plm;
+  { if (k>0) and (k<10) then form1.Canvas.Pixels[i,j]:=$ffffff
+    else form1.Canvas.Pixels[i,j]:=$0;   }
+   cr:=plema[k].cvet;
+   form1.Canvas.Pixels[i,j]:=cr;
+  end;
+end;
+
+procedure TForm1.FormMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+ if clik then
+  begin
+   clik:=false;
+   form1.Edit3.Text:=inttohex(area[x,y].clr,6);
+    if compare(civ1,x,y) then form1.Edit1.Text:='Да'
+    else  form1.Edit1.Text:='Нет';
+  end
+ else
+  begin
+   clik:=true;
+   civ1:=area[x,y].plm;
+   form1.Edit2.Text:=inttohex(plema[area[x,y].plm].cvet,6);
+  end;
+ form1.Edit4.Text := inttostr(area[x,y].plm);
+end;
+
+end.

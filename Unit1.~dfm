@@ -1,0 +1,161 @@
+object Form1: TForm1
+  Left = 173
+  Top = 124
+  Width = 696
+  Height = 543
+  Caption = 'Form1'
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  Font.Style = []
+  OldCreateOrder = False
+  OnCreate = FormCreate
+  OnMouseDown = FormMouseDown
+  PixelsPerInch = 96
+  TextHeight = 13
+  object Button1: TButton
+    Left = 608
+    Top = 144
+    Width = 75
+    Height = 25
+    Caption = #1057#1090#1072#1088#1090
+    TabOrder = 0
+    OnClick = Button1Click
+  end
+  object Button2: TButton
+    Left = 608
+    Top = 176
+    Width = 75
+    Height = 25
+    Caption = '50 '#1093#1086#1076#1086#1074
+    TabOrder = 1
+    OnClick = Button2Click
+  end
+  object Button3: TButton
+    Left = 608
+    Top = 240
+    Width = 75
+    Height = 25
+    Caption = #1053#1072#1094#1080#1080
+    TabOrder = 2
+    OnClick = Button3Click
+  end
+  object Button4: TButton
+    Left = 608
+    Top = 272
+    Width = 75
+    Height = 25
+    Caption = '"'#1043#1086#1089#1091#1076#1072#1088#1089#1090#1074#1072'"'
+    TabOrder = 3
+    OnClick = Button4Click
+  end
+  object Button5: TButton
+    Left = 608
+    Top = 304
+    Width = 75
+    Height = 25
+    Caption = #1057#1090#1088#1072#1093
+    TabOrder = 4
+    OnClick = Button5Click
+  end
+  object Button6: TButton
+    Left = 608
+    Top = 336
+    Width = 75
+    Height = 25
+    Caption = #1040#1075#1088#1077#1089#1089#1080#1103
+    TabOrder = 5
+    OnClick = Button6Click
+  end
+  object Edit1: TEdit
+    Left = 608
+    Top = 400
+    Width = 65
+    Height = 21
+    ReadOnly = True
+    TabOrder = 6
+  end
+  object Button7: TButton
+    Left = 608
+    Top = 208
+    Width = 75
+    Height = 25
+    Caption = '500 '#1093#1086#1076#1086#1074
+    TabOrder = 7
+    OnClick = Button7Click
+  end
+  object Button8: TButton
+    Left = 608
+    Top = 368
+    Width = 75
+    Height = 25
+    Caption = #1042#1099#1093#1086#1076
+    TabOrder = 8
+    OnClick = Button8Click
+  end
+  object Button9: TButton
+    Left = 608
+    Top = 16
+    Width = 75
+    Height = 25
+    Caption = #1054#1090#1082#1088#1099#1090#1100
+    TabOrder = 9
+    OnClick = Button9Click
+  end
+  object Button10: TButton
+    Left = 608
+    Top = 48
+    Width = 75
+    Height = 25
+    Caption = #1057#1086#1093#1088#1072#1085#1080#1090#1100
+    TabOrder = 10
+    OnClick = Button10Click
+  end
+  object Button11: TButton
+    Left = 608
+    Top = 112
+    Width = 75
+    Height = 25
+    Caption = #1043#1086#1089#1085#1072#1094#1080#1103
+    TabOrder = 11
+    OnClick = Button11Click
+  end
+  object Button12: TButton
+    Left = 608
+    Top = 80
+    Width = 73
+    Height = 25
+    Caption = '-------'
+    TabOrder = 12
+  end
+  object Edit2: TEdit
+    Left = 608
+    Top = 424
+    Width = 65
+    Height = 21
+    ReadOnly = True
+    TabOrder = 13
+  end
+  object Edit3: TEdit
+    Left = 608
+    Top = 448
+    Width = 65
+    Height = 21
+    ReadOnly = True
+    TabOrder = 14
+  end
+  object Edit4: TEdit
+    Left = 608
+    Top = 472
+    Width = 65
+    Height = 21
+    TabOrder = 15
+  end
+  object OpenDialog1: TOpenDialog
+  end
+  object SaveDialog1: TSaveDialog
+    Left = 32
+  end
+end
